@@ -2,6 +2,15 @@
 import React, { useState } from 'react';
 import { UserState } from '../types';
 
+interface SwapHistoryItem {
+  id: string;
+  from: string;
+  to: string;
+  amount: string;
+  timestamp: string;
+  status: 'SUCCESS' | 'PENDING';
+}
+
 interface RouterConsoleProps {
   user: UserState;
   setUser: React.Dispatch<React.SetStateAction<UserState>>;
@@ -13,6 +22,7 @@ const RouterConsole: React.FC<RouterConsoleProps> = ({ user, setUser, addLog }) 
   const [toToken, setToToken] = useState('usdSOVR');
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [history, setHistory] = useState<SwapHistoryItem[]>([]);
 
   const currentBalance = fromToken === 'USDC' ? user.usdcBalance : user.usdSovrBalance;
   const numAmount = Number(amount);
@@ -28,7 +38,19 @@ const RouterConsole: React.FC<RouterConsoleProps> = ({ user, setUser, addLog }) 
     setTimeout(() => {
       setIsLoading(false);
       const val = Number(amount);
-      addLog(`Swap Confirmed. Block #19432108. Hash: 0x${Math.random().toString(16).slice(2)}`, 'success');
+      const txId = Math.random().toString(16).slice(2, 10);
+      addLog(`Swap Confirmed. Block #19432108. Hash: 0x${txId}`, 'success');
+      
+      const newHistoryItem: SwapHistoryItem = {
+        id: txId,
+        from: fromToken,
+        to: toToken,
+        amount: amount,
+        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        status: 'SUCCESS'
+      };
+
+      setHistory(prev => [newHistoryItem, ...prev].slice(0, 5));
       
       setUser(prev => ({
         ...prev,
@@ -41,7 +63,6 @@ const RouterConsole: React.FC<RouterConsoleProps> = ({ user, setUser, addLog }) 
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    // Allow only positive numbers and decimals
     if (val === '' || (/^\d*\.?\d*$/.test(val))) {
       setAmount(val);
     }
@@ -52,8 +73,9 @@ const RouterConsole: React.FC<RouterConsoleProps> = ({ user, setUser, addLog }) 
   };
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col lg:flex-row gap-8 items-start animate-in slide-in-from-bottom-4 duration-700">
-      <div className="flex-1 glass-panel rounded-3xl p-8 border-glow-orange relative overflow-hidden">
+    <div className="max-w-6xl mx-auto flex flex-col xl:flex-row gap-8 items-start animate-in slide-in-from-bottom-4 duration-700">
+      {/* Main Terminal */}
+      <div className="flex-1 glass-panel rounded-[32px] p-8 border-glow-orange relative overflow-hidden w-full">
         <div className="flex justify-between items-center mb-10">
            <h3 className="text-lg font-bold text-white uppercase tracking-widest">Router Terminal</h3>
            <div className="flex items-center gap-2">
@@ -148,9 +170,14 @@ const RouterConsole: React.FC<RouterConsoleProps> = ({ user, setUser, addLog }) 
         </button>
       </div>
 
-      <div className="w-full lg:w-80 space-y-6">
-         <div className="glass-panel rounded-2xl p-6 border-slate-800">
-            <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-6">Execution Path</h4>
+      {/* Side Utilities */}
+      <div className="w-full xl:w-80 space-y-6">
+         {/* Execution Path */}
+         <div className="glass-panel rounded-2xl p-6 border-slate-800 bg-slate-900/20">
+            <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+              <i className="fas fa-route text-orange-400"></i>
+              Execution Path
+            </h4>
             <div className="relative space-y-8 pl-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-px before:bg-slate-800">
                <div className="relative">
                   <div className="absolute -left-5 w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]"></div>
@@ -168,6 +195,46 @@ const RouterConsole: React.FC<RouterConsoleProps> = ({ user, setUser, addLog }) 
                   <span className="block text-xs text-white mono mt-1">usdSOVR_Minter</span>
                </div>
             </div>
+         </div>
+
+         {/* Swap History */}
+         <div className="glass-panel rounded-2xl p-6 border-slate-800 bg-slate-900/20">
+            <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-6 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <i className="fas fa-clock-rotate-left text-orange-400"></i>
+                Recent Swaps
+              </span>
+              <span className="text-[9px] text-slate-600 mono">{history.length} TX</span>
+            </h4>
+            
+            {history.length === 0 ? (
+              <div className="py-10 text-center border border-dashed border-slate-800 rounded-xl">
+                 <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">No active history</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {history.map(item => (
+                  <div key={item.id} className="p-3 bg-black/40 rounded-xl border border-slate-800/50 group hover:border-orange-500/20 transition-all">
+                    <div className="flex justify-between items-start mb-2">
+                       <div className="flex items-center gap-2">
+                          <span className="text-[10px] mono text-white font-bold">{item.amount}</span>
+                          <span className="text-[9px] text-slate-500 uppercase font-bold">{item.from}</span>
+                          <i className="fas fa-arrow-right text-[8px] text-slate-600"></i>
+                          <span className="text-[9px] text-orange-400 uppercase font-bold">{item.to}</span>
+                       </div>
+                       <span className="text-[8px] mono text-slate-600">{item.timestamp}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                       <span className="text-[8px] mono text-slate-700">HASH: 0x{item.id}</span>
+                       <div className="flex items-center gap-1">
+                          <div className="w-1 h-1 rounded-full bg-emerald-500"></div>
+                          <span className="text-[8px] font-black text-emerald-500 uppercase">Success</span>
+                       </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
          </div>
       </div>
     </div>
